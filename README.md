@@ -1,7 +1,7 @@
 # LearnUsDownloader
 LearnUs video downloader
 * v2.0 수정사항 : AES-128 decrypt
-2. mac os 유저는 `for mac /learn_us_downloader_for_mac` 을 사용하시고, 윈도우 유저는 `LearnUsDownloaderv1.1/learn_us_downloader.exe` 를 사용하세요.
+2. mac os 유저는 `LearnUsDownloaderv2.0/LearnUsDownloader`(첫번째 파일) 을 사용하시고, 윈도우 유저는 `LearnUsDownloaderv2.0/LearnUsDownloader.exe` (두번째 파일) 를 사용하시면 됩니다.
 
 * 3,4 과정은 설명서를 보시고 하면 수월합니다
 3. 크롬 브라우저로 강의 영상을 재생하고 우클릭이 가능한 아래쪽 빈공간을 찾아 우클릭, 검사를 클릭합니다.
