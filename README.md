@@ -1,6 +1,7 @@
 # LearnUsDownloader
 LearnUs video downloader
 * v2.0 수정사항 : AES-128 decrypt
+1. 페이지 우상단의 초록색 Code 버튼 클릭 > Download ZIP 클릭으로 다운받아주세
 2. mac os 유저는 `LearnUsDownloaderv2.0/LearnUsDownloader`(첫번째 파일) 을 사용하시고, 윈도우 유저는 `LearnUsDownloaderv2.0/LearnUsDownloader.exe` (두번째 파일) 를 사용하시면 됩니다.
 
 * 3,4 과정은 설명서를 보시고 하면 수월합니다
