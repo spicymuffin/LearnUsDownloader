@@ -1,7 +1,7 @@
 import m3u8
 import requests
-from Crypto.Util.Padding import pad
-from Crypto.Cipher import AES
+from Cryptodome.Util.Padding import pad
+from Cryptodome.Cipher import AES
 import requests
 from tqdm import tqdm
 import binascii
@@ -12,8 +12,10 @@ def get_input():
     get url, video file name from user
     :return: raw_url(ends with ".mp4" or ".ts"), file_name(ends with ".mp4")
     """
-    raw_url = input("enter the url you copied from the browser (ex. https://.../segment-1-v1-a1.ts) : ")
-    file_name = input("enter the name of the video file will be downloaded (ex. video.mp4) : ")
+    raw_url = input(
+        "enter the url you copied from the browser (ex. https://.../segment-1-v1-a1.ts) : ")
+    file_name = input(
+        "enter the name of the video file will be downloaded (ex. video.mp4) : ")
     if file_name[-4:] != ".mp4":
         file_name += ".mp4"
     return raw_url, file_name
@@ -63,7 +65,7 @@ def binify(x):
     return binascii.unhexlify('0'*(32-len(h))+h)
 
 
-def download_video():
+def download_video_user_input():
     """
     download video (runner)
     """
@@ -77,10 +79,28 @@ def download_video():
         data = requests.get(seg.absolute_uri).content
         iv = binify(i+1)
         data = decrypt_video(data, key, iv)
-        with open(file_name,"ab" if i != 0 else "wb") as f:
+        with open(file_name, "ab" if i != 0 else "wb") as f:
+            f.write(data)
+
+
+def download_video(_base_url, _file_name):
+    """download video use programmatically
+
+    Args:
+        _base_url (str): base url for video
+        _file_name (str): .mp4 file name
+    """
+    playlist = get_playlist(_base_url)
+    key = requests.get(playlist.keys[-1].absolute_uri).content
+    seq_len = len(playlist.segments)
+    for i in tqdm(range(seq_len)):
+        seg = playlist.segments[i]
+        data = requests.get(seg.absolute_uri).content
+        iv = binify(i+1)
+        data = decrypt_video(data, key, iv)
+        with open(_file_name, "ab" if i != 0 else "wb") as f:
             f.write(data)
 
 
 if __name__ == "__main__":
-    download_video()
-
+    download_video_user_input()
