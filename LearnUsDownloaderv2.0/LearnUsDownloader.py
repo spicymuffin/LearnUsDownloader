@@ -102,5 +102,26 @@ def download_video(_base_url, _file_name):
             f.write(data)
 
 
+def download_video_multithread(_base_url, _file_name, path, q):
+    """download video use programmatically
+
+    Args:
+        _base_url (str): base url for video
+        _file_name (str): .mp4 file name
+    """
+    playlist = get_playlist(_base_url)
+    key = requests.get(playlist.keys[-1].absolute_uri).content
+    seq_len = len(playlist.segments)
+    for i in range(seq_len):
+        seg = playlist.segments[i]
+        data = requests.get(seg.absolute_uri).content
+        iv = binify(i+1)
+        data = decrypt_video(data, key, iv)
+        with open(_file_name, "ab" if i != 0 else "wb") as f:
+            f.write(data)
+        q.put(("update", path, seq_len, i))
+    q.put(("done", path))
+
+
 if __name__ == "__main__":
     download_video_user_input()

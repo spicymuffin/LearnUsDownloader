@@ -2,16 +2,23 @@ from pyquery import PyQuery as pq
 import os
 import LearnUsDownloader as ld
 import datetime
+import time
+import threading
+import sys
+import queue
 import requests
 
-#proveide cookies! view them through element inspector in chrome
+MULTITHREADED = True
+MAX_ACTIVE_THREAD_COUNT = 7
+
+# provide cookies. i used https://curlconverter.com/ to do that!
+# just copy any request that has cookies in it and copy the request as curl (bash)
 cookies = {
 
 }
 
-#set course ID
 params = {
-    'id': '235881', # course ID
+    'id': '228313',  # course ID
 }
 
 
@@ -42,8 +49,11 @@ for week in lst:
         href = j.attr("href")
         title = m.remove("span").html()
         vod = [href, title]
-        fldr[1].append(vod)
+        if vod[0] != None and "/vod/" in vod[0]:
+            fldr[1].append(vod)
     fldrs.append(fldr)
+
+# print(*fldrs, sep="\n")
 
 # process folders
 for i in range(len(fldrs)):
@@ -51,7 +61,7 @@ for i in range(len(fldrs)):
         fldrs[i][1][j][0] = fldrs[i][1][j][0].replace(
             "https://ys.learnus.org/mod/vod/view.php?id=", "")
 
-# make batch folder
+
 now = datetime.datetime.now()
 dt_string = now.strftime("%d %B, %Y %H-%M-%S")
 wrkdir = CURR_PATH + '\\' + dt_string
@@ -70,34 +80,103 @@ def sanitize(s):
     return "".join(x for x in s if not (x in ['\\', '/', ':', '*', '?', '"', '<', '>', '|']))
 
 
-for i in range(len(fldrs)):
-    week_folder_name = sanitize(fldrs[i][0])
-    print(f"downloading: {week_folder_name}")
-    week_folder_path = wrkdir + '\\' + week_folder_name
-    os.mkdir(week_folder_path)
-    for j in range(len(fldrs[i][1])):
+# the reporting thread
+def reporter(q):
+    status = {}
+    while threading.active_count() != MAX_ACTIVE_THREAD_COUNT+2:
+        time.sleep(0.25)
 
-        # set VOD ID
-        params = {
-            'id': fldrs[i][1][j][0]
-        }
+    while threading.active_count() > 2:
+        msg = q.get()
+        if msg[0] == "update":
+            path, total, size = msg[1:]
+            status[path] = (total, size)
+            # update the screen here
+            show_progress(status)
+        elif msg[0] == "done":
+            del status[path]
+    print("")
 
-        vod_response = requests.get('https://ys.learnus.org/mod/vod/viewer.php',
-                                    params=params, cookies=cookies)
 
-        dc = vod_response.content.decode()
-        ind = dc.find('<source src="') + len('<source src="')
+def show_progress(status):
+    line = ""
+    for path in status:
+        (total, size) = status[path]
+        line = line + \
+            f"  {path}: {format(size, f' >{len(str(total))}')}/{total}({format(size/total*100, ' >6.2f')}%)"
+    sys.stdout.write("\r"+line)
+    sys.stdout.flush()
 
-        base_url = ""
-        scan_i = ind
-        while dc[scan_i] != '"':
-            base_url += dc[scan_i]
-            scan_i += 1
 
-        # sorry, this is a mess but this gets rid of "/index.m3u8"
-        base_url = "/".join(base_url.split("/")[:-1])
+if MULTITHREADED == False:
+    for i in range(len(fldrs)):
+        week_folder_name = sanitize(fldrs[i][0])
+        print(f"downloading: {week_folder_name}")
+        week_folder_path = wrkdir + '\\' + week_folder_name
+        os.mkdir(week_folder_path)
+        for j in range(len(fldrs[i][1])):
 
-        file_absolute_path = week_folder_path + \
-            '\\' + sanitize(fldrs[i][1][j][1]) + ".mp4"
-        print(f"{fldrs[i][0]}: {fldrs[i][1][j][1]}")
-        ld.download_video(base_url, file_absolute_path)
+            params = {
+                'id': fldrs[i][1][j][0]
+            }
+
+            vod_response = requests.get('https://ys.learnus.org/mod/vod/viewer.php',
+                                        params=params, cookies=cookies, headers=headers)
+
+            dc = vod_response.content.decode()
+            ind = dc.find('<source src="') + len('<source src="')
+
+            base_url = ""
+            scan_i = ind
+            while dc[scan_i] != '"':
+                base_url += dc[scan_i]
+                scan_i += 1
+
+            # sorry, this is a mess but this gets rid of "/index.m3u8"
+            base_url = "/".join(base_url.split("/")[:-1])
+
+            file_absolute_path = week_folder_path + \
+                '\\' + sanitize(fldrs[i][1][j][1]) + ".mp4"
+            print(f"{fldrs[i][0]}: {fldrs[i][1][j][1]}")
+            ld.download_video(base_url, file_absolute_path)
+else:
+    q = queue.Queue()
+
+    reporter_thread = threading.Thread(target=reporter, args=(q, ))
+    reporter_thread.start()
+    for i in range(len(fldrs)):
+        week_folder_name = sanitize(fldrs[i][0])
+        # print(f"downloading: {week_folder_name}")
+        week_folder_path = wrkdir + '\\' + week_folder_name
+        os.mkdir(week_folder_path)
+        for j in range(len(fldrs[i][1])):
+
+            params = {
+                'id': fldrs[i][1][j][0]
+            }
+
+            vod_response = requests.get('https://ys.learnus.org/mod/vod/viewer.php',
+                                        params=params, cookies=cookies)
+
+            dc = vod_response.content.decode()
+            ind = dc.find('<source src="') + len('<source src="')
+
+            base_url = ""
+            scan_i = ind
+            while dc[scan_i] != '"':
+                base_url += dc[scan_i]
+                scan_i += 1
+
+            # sorry, this is a mess but this gets rid of "/index.m3u8"
+            base_url = "/".join(base_url.split("/")[:-1])
+
+            file_absolute_path = week_folder_path + \
+                '\\' + sanitize(fldrs[i][1][j][1]) + ".mp4"
+            # print(f"{fldrs[i][0]}: {fldrs[i][1][j][1]}")
+
+            while threading.active_count() >= MAX_ACTIVE_THREAD_COUNT+2:
+                time.sleep(0.25)
+
+            tr = threading.Thread(target=ld.download_video_multithread, args=(
+                base_url, file_absolute_path, f"{i+1}/{j+1}", q))
+            tr.start()
