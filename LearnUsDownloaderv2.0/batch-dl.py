@@ -121,7 +121,7 @@ if MULTITHREADED == False:
             }
 
             vod_response = requests.get('https://ys.learnus.org/mod/vod/viewer.php',
-                                        params=params, cookies=cookies, headers=headers)
+                                        params=params, cookies=cookies)
 
             dc = vod_response.content.decode()
             ind = dc.find('<source src="') + len('<source src="')
